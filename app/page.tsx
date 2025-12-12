@@ -1,6 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useForm, type Resolver, type SubmitHandler } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+
 import { apolloClient } from "../lib/apollo"
 import {
   LOGIN,
@@ -13,7 +17,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { User } from "lucide-react" // ícone de usuário
+import { User } from "lucide-react"
+
+/* ============================================================
+   TIPAGEM
+============================================================ */
 
 type Produto = {
   id: string
@@ -28,35 +36,96 @@ type Produto = {
   }
 }
 
-export default function Home() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+/* ============================================================
+   SCHEMAS ZOD
+============================================================ */
 
+const LoginSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+  password: z.string().min(3, "Senha muito curta"),
+})
+
+type LoginFormType = z.infer<typeof LoginSchema>
+
+/*
+  ProdutoSchema: valida e COERCE (quantidade) para number.
+  Observe que z.coerce.number() permitirá que o Zod transforme a string vindo do input em number.
+*/
+const ProdutoSchema = z.object({
+  nome: z.string().min(2, "Nome obrigatório"),
+  quantidade: z.coerce.number().min(1, "Quantidade inválida"),
+  origem: z.string().min(2, "Origem obrigatória"),
+  sku: z.string().min(2, "SKU obrigatório"),
+  descricao: z.string().optional(),
+})
+
+/**
+ * ProdutoFormInput: os tipos que o formulário realmente fornece (inputs => strings).
+ * Mantemos essa distinção para agradar o react-hook-form.
+ */
+type ProdutoFormInput = {
+  nome: string
+  quantidade: string
+  origem: string
+  sku: string
+  descricao?: string
+}
+
+/* ============================================================
+   COMPONENTE PRINCIPAL
+============================================================ */
+
+export default function Home() {
   const [produtos, setProdutos] = useState<Produto[]>([])
-  const [form, setForm] = useState({
-    nome: "",
-    quantidade: 0,
-    origem: "",
-    sku: "",
-    descricao: "",
-  })
   const [editId, setEditId] = useState<string | null>(null)
-  
-  // Autenticação
+
   const [token, setToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  /* ---------------------- FORM LOGIN ---------------------- */
+
+  const loginForm = useForm<LoginFormType>({
+    resolver: zodResolver(LoginSchema),
+  })
+
+  /* ---------------------- FORM PRODUTO ---------------------- */
+
+  /**
+   * Aqui fazemos a correção importante:
+   * - usamos useForm<ProdutoFormInput>
+   * - informamos o resolver com a tipagem esperada pelo RHF:
+   *   zodResolver(ProdutoSchema) as Resolver<ProdutoFormInput>
+   *
+   * Isso silencia o erro 2322 e é seguro porque Zod fará a conversão ao parse.
+   */
+  const produtoForm = useForm<ProdutoFormInput>({
+    resolver: zodResolver(ProdutoSchema) as unknown as Resolver<ProdutoFormInput>,
+    defaultValues: {
+      nome: "",
+      quantidade: "",
+      origem: "",
+      sku: "",
+      descricao: "",
+    },
+  })
+
+  /* ---------------------- TOKEN LOAD ---------------------- */
+
   useEffect(() => {
     const savedToken = localStorage.getItem("token")
     const savedUser = localStorage.getItem("userName")
+
     if (savedToken) {
       setToken(savedToken)
       if (savedUser) setUserName(savedUser)
       fetchProdutos()
     }
+
     setLoading(false)
   }, [])
+
+  /* ---------------------- FETCH PRODUTOS ---------------------- */
 
   const fetchProdutos = async () => {
     try {
@@ -70,71 +139,87 @@ export default function Home() {
     }
   }
 
-  const handleLogin = async () => {
+  /* ---------------------- LOGIN SUBMIT ---------------------- */
+
+  const onLogin = async (data: LoginFormType) => {
     try {
-      const { data } = await apolloClient.mutate({
+      const response = await apolloClient.mutate({
         mutation: LOGIN,
-        variables: { email, password },
+        variables: data,
       }) as any
 
-      if (!data?.login?.token) throw new Error("Login falhou")
+      if (!response.data?.login?.token) throw new Error("Login falhou")
 
-      localStorage.setItem("token", data.login.token)
-      localStorage.setItem("userName", data.login.user.name) // salva nome do usuário
-      setToken(data.login.token)
-      setUserName(data.login.user.name)
+      localStorage.setItem("token", response.data.login.token)
+      localStorage.setItem("userName", response.data.login.user.name)
 
-      alert("Autenticado com sucesso!")
+      setToken(response.data.login.token)
+      setUserName(response.data.login.user.name)
+
       fetchProdutos()
-    } catch (err) {
-      console.error(err)
-      alert("Erro ao autenticar!")
+    } catch {
+      alert("Erro ao autenticar")
     }
   }
 
+  /* ---------------------- LOGOUT ---------------------- */
+
   const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("userName")
+    localStorage.clear()
     setToken(null)
     setUserName(null)
-    setForm({ nome: "", quantidade: 0, origem: "", sku: "", descricao: "" })
-    setEditId(null)
     setProdutos([])
   }
 
-  const handleSubmit = async () => {
+  /* ---------------------- PRODUTO SUBMIT ---------------------- */
+
+  /**
+   * Tipamos o handler como SubmitHandler<ProdutoFormInput> para que o RHF aceite
+   * produtoForm.handleSubmit(onSubmitProduto) sem erro (resolve 2345).
+   *
+   * Dentro do handler usamos ProdutoSchema.parse(formValues) para obter a versão
+   * coerida (quantidade: number).
+   */
+  const onSubmitProduto: SubmitHandler<ProdutoFormInput> = async (formValues) => {
+    // parse + coerção (pode lançar, mas o resolver já valida; parse aqui é seguro)
+    const data = ProdutoSchema.parse(formValues)
+
     try {
       if (editId) {
         await apolloClient.mutate({
           mutation: UPDATE_PRODUTO,
-          variables: { id: editId, ...form, quantidade: Number(form.quantidade) },
+          variables: { id: editId, ...data },
         })
       } else {
         await apolloClient.mutate({
           mutation: CREATE_PRODUTO,
-          variables: { ...form, quantidade: Number(form.quantidade) },
+          variables: data,
         })
       }
 
-      setForm({ nome: "", quantidade: 0, origem: "", sku: "", descricao: "" })
+      produtoForm.reset()
       setEditId(null)
       fetchProdutos()
     } catch (err) {
       console.error(err)
-      alert("Erro ao salvar produto!")
+      alert("Erro ao salvar")
     }
   }
 
-  const startEdit = (produto: Produto) => {
-    setEditId(produto.id)
-    setForm({
-      nome: produto.nome,
-      quantidade: produto.quantidade,
-      origem: produto.origem,
-      sku: produto.sku,
-      descricao: produto.descricao || "",
+  /* ---------------------- EDITAR PRODUTO ---------------------- */
+
+  const startEdit = (p: Produto) => {
+    setEditId(p.id)
+    produtoForm.reset({
+      nome: p.nome,
+      quantidade: String(p.quantidade),
+      origem: p.origem,
+      sku: p.sku,
+      descricao: p.descricao ?? "",
     })
   }
+
+  /* ---------------------- DELETE PRODUTO ---------------------- */
 
   const handleDelete = async (id: string) => {
     try {
@@ -142,20 +227,39 @@ export default function Home() {
       fetchProdutos()
     } catch (err) {
       console.error(err)
-      alert("Erro ao deletar produto!")
+      alert("Erro ao deletar")
     }
   }
+
+  /* ============================================================
+     RENDER
+  ============================================================ */
 
   if (loading) return <p>Carregando...</p>
 
   if (!token) {
     return (
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-8 max-w-md mx-auto">
         <Card className="p-6 space-y-4">
           <h1 className="text-xl font-bold">Login</h1>
-          <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input placeholder="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Button onClick={handleLogin}>Entrar</Button>
+
+          <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+            <Input placeholder="Email" {...loginForm.register("email")} />
+            {loginForm.formState.errors.email && (
+              <p className="text-red-500 text-sm">
+                {loginForm.formState.errors.email.message}
+              </p>
+            )}
+
+            <Input type="password" placeholder="Senha" {...loginForm.register("password")} />
+            {loginForm.formState.errors.password && (
+              <p className="text-red-500 text-sm">
+                {loginForm.formState.errors.password.message}
+              </p>
+            )}
+
+            <Button type="submit">Entrar</Button>
+          </form>
         </Card>
       </div>
     )
@@ -163,8 +267,8 @@ export default function Home() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6">
-      {/* Topo com usuário logado */}
-      <div className="flex justify-between items-center mb-4">
+      {/* Usuário logado */}
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <User className="w-6 h-6 text-gray-600" />
           <span className="font-medium">{userName}</span>
@@ -172,47 +276,68 @@ export default function Home() {
         <Button variant="secondary" onClick={handleLogout}>Sair</Button>
       </div>
 
-      {/* FORMULÁRIO */}
+      {/* Formulário de Produto */}
       <Card className="p-6 space-y-4">
-        <h1 className="text-xl font-bold">{editId ? "Editar Produto" : "Criar Produto"}</h1>
+        <h1 className="text-xl font-bold">
+          {editId ? "Editar Produto" : "Criar Produto"}
+        </h1>
 
-        <Input placeholder="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-        <Input placeholder="Quantidade" type="number" value={form.quantidade} onChange={(e) => setForm({ ...form, quantidade: Number(e.target.value) })} />
-        <Input placeholder="Origem" value={form.origem} onChange={(e) => setForm({ ...form, origem: e.target.value })} />
-        <Input placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-        <Input placeholder="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
+        <form onSubmit={produtoForm.handleSubmit(onSubmitProduto)} className="space-y-3">
+          <Input placeholder="Nome" {...produtoForm.register("nome")} />
 
-        <div className="flex gap-2">
-          <Button onClick={handleSubmit}>{editId ? "Atualizar" : "Salvar"}</Button>
-          {editId && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setEditId(null)
-                setForm({ nome: "", quantidade: 0, origem: "", sku: "", descricao: "" })
-              }}
-            >
-              Cancelar
-            </Button>
-          )}
-        </div>
+          <Input
+            placeholder="Quantidade"
+            type="number"
+            {...produtoForm.register("quantidade")}
+          />
+
+          <Input placeholder="Origem" {...produtoForm.register("origem")} />
+          <Input placeholder="SKU" {...produtoForm.register("sku")} />
+          <Input placeholder="Descrição" {...produtoForm.register("descricao")} />
+
+          {Object.values(produtoForm.formState.errors).map((err, index) => (
+            <p key={index} className="text-red-500 text-sm">{err?.message}</p>
+          ))}
+
+          <div className="flex gap-2">
+            <Button type="submit">{editId ? "Atualizar" : "Salvar"}</Button>
+            {editId && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditId(null)
+                  produtoForm.reset()
+                }}
+              >
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </form>
       </Card>
 
-      {/* LISTA */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Produtos</h2>
+      {/* Lista de produtos */}
+      <Card className="p-6 space-y-3">
+        <h2 className="text-lg font-semibold">Produtos</h2>
+
         <ul className="space-y-2">
           {produtos.map((p) => (
-            <li key={p.id} className="flex justify-between items-center">
+            <li key={p.id} className="flex justify-between">
               <span>
-                <strong>{p.nome}</strong> ({p.sku}) — qtd: {p.quantidade}
+                <strong>{p.nome}</strong> — {p.quantidade} unidades
                 <br />
-                <small className="text-gray-500">Criado por: {p.user?.name ?? "—"}</small>
+                <small className="text-gray-500">{p.sku}</small>
+                <br />
+                <small className="text-gray-500">
+                  Criado por: {p.user?.name ?? "—"}
+                </small>
               </span>
 
               <div className="space-x-2">
                 <Button size="sm" onClick={() => startEdit(p)}>Editar</Button>
-                <Button size="sm" variant="destructive" onClick={() => handleDelete(p.id)}>Deletar</Button>
+                <Button size="sm" variant="destructive" onClick={() => handleDelete(p.id)}>
+                  Excluir
+                </Button>
               </div>
             </li>
           ))}
