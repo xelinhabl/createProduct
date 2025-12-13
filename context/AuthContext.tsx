@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { apolloClient } from "../lib/apollo"
 import { LOGIN } from "../lib/graphql"
 
@@ -21,44 +22,64 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const router = useRouter()
   const [token, setToken] = useState<string | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  /* 🔑 Recupera sessão pelo cookie */
   useEffect(() => {
-    const savedToken = localStorage.getItem("token")
-    const savedUser = localStorage.getItem("userName")
+    const tokenCookie = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1]
 
-    if (savedToken) setToken(savedToken)
-    if (savedUser) setUser({ id: "", name: savedUser, email: "" }) // Id/email podem vir do backend se necessário
+    if (tokenCookie) {
+      setToken(tokenCookie)
+
+      // ⚠️ Ideal: buscar user pelo backend
+      const savedUser = localStorage.getItem("user")
+      if (savedUser) {
+        setUser(JSON.parse(savedUser))
+      }
+    }
 
     setLoading(false)
   }, [])
 
+  /* 🔐 LOGIN */
   const login = async (email: string, password: string) => {
-    try {
-      const { data } = await apolloClient.mutate({
-        mutation: LOGIN,
-        variables: { email, password },
-      }) as any
+    const { data } = await apolloClient.mutate({
+      mutation: LOGIN,
+      variables: { email, password },
+    }) as any
 
-      if (!data?.login?.token) throw new Error("Login falhou")
-
-      setToken(data.login.token)
-      setUser(data.login.user)
-
-      localStorage.setItem("token", data.login.token)
-      localStorage.setItem("userName", data.login.user.name)
-    } catch (err) {
-      console.error(err)
-      throw new Error("Erro ao logar")
+    if (!data?.login?.token) {
+      throw new Error("Falha no login")
     }
+
+    const { token, user } = data.login
+
+    // 🍪 salva cookie (server-friendly)
+    document.cookie = `token=${token}; path=/`
+
+    setToken(token)
+    setUser(user)
+
+    localStorage.setItem("user", JSON.stringify(user))
+
+    router.push("/products")
   }
 
+  /* 🚪 LOGOUT */
   const logout = () => {
-    localStorage.clear()
+    document.cookie = "token=; Max-Age=0; path=/"
+    localStorage.removeItem("user")
+
     setToken(null)
     setUser(null)
+
+    router.push("/login")
   }
 
   return (
@@ -70,6 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) throw new Error("useAuth must be used within AuthProvider")
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider")
+  }
   return context
 }
