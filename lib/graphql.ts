@@ -1,4 +1,5 @@
-import { gql } from "@apollo/client"
+// lib/graphql.ts
+import { gql } from "@apollo/client";
 
 // LOGIN
 export const LOGIN = gql`
@@ -12,9 +13,9 @@ export const LOGIN = gql`
       }
     }
   }
-`
+`;
 
-// CREATE
+// CREATE PRODUTO
 export const CREATE_PRODUTO = gql`
   mutation CreateProduto(
     $nome: String!
@@ -38,9 +39,9 @@ export const CREATE_PRODUTO = gql`
       descricao
     }
   }
-`
+`;
 
-// UPDATE
+// UPDATE PRODUTO
 export const UPDATE_PRODUTO = gql`
   mutation UpdateProduto(
     $id: ID!
@@ -66,16 +67,16 @@ export const UPDATE_PRODUTO = gql`
       descricao
     }
   }
-`
+`;
 
-// DELETE
+// DELETE PRODUTO
 export const DELETE_PRODUTO = gql`
   mutation DeleteProduto($id: ID!) {
     deleteProduto(id: $id)
   }
-`
+`;
 
-// LIST
+// LIST PRODUTOS
 export const GET_PRODUTOS = gql`
   query GetProdutos {
     produtos {
@@ -91,4 +92,4 @@ export const GET_PRODUTOS = gql`
       }
     }
   }
-`
+`;

@@ -1,8 +1,9 @@
+// context/AuthContext.tsx
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { apolloClient } from "../lib/apollo"
+import { apolloClient } from "../lib/apollo-client"
 import { LOGIN } from "../lib/graphql"
 
 interface User {
@@ -27,27 +28,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  /* 🔑 Recupera sessão pelo cookie */
   useEffect(() => {
-    const tokenCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("token="))
-      ?.split("=")[1]
+    const savedToken = localStorage.getItem("token")
+    const savedUser = localStorage.getItem("user")
 
-    if (tokenCookie) {
-      setToken(tokenCookie)
-
-      // ⚠️ Ideal: buscar user pelo backend
-      const savedUser = localStorage.getItem("user")
-      if (savedUser) {
-        setUser(JSON.parse(savedUser))
-      }
+    if (savedToken && savedUser) {
+      setToken(savedToken)
+      setUser(JSON.parse(savedUser))
     }
 
     setLoading(false)
   }, [])
 
-  /* 🔐 LOGIN */
   const login = async (email: string, password: string) => {
     const { data } = await apolloClient.mutate({
       mutation: LOGIN,
@@ -60,20 +52,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { token, user } = data.login
 
-    // 🍪 salva cookie (server-friendly)
-    document.cookie = `token=${token}; path=/`
+    localStorage.setItem("token", token)
+    localStorage.setItem("user", JSON.stringify(user))
 
     setToken(token)
     setUser(user)
 
-    localStorage.setItem("user", JSON.stringify(user))
-
     router.push("/products")
   }
 
-  /* 🚪 LOGOUT */
   const logout = () => {
-    document.cookie = "token=; Max-Age=0; path=/"
+    localStorage.removeItem("token")
     localStorage.removeItem("user")
 
     setToken(null)
@@ -91,8 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider")
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider")
   return context
 }

@@ -1,168 +1,193 @@
-# 🛒 CreateProduct
+CreateProduct – GraphQL + Prisma + Docker
 
-Projeto fullstack desenvolvido como teste técnico, demonstrando **CRUD de produtos**, **autenticação**, **rotas protegidas** e **validação de formulários**, utilizando tecnologias modernas do ecossistema React / Next.js.
+Projeto fullstack para criação de usuários e produtos, utilizando GraphQL, Prisma ORM, PostgreSQL e Docker, com foco em ambiente de desenvolvimento local.
 
----
+🚀 Tecnologias Utilizadas
+Backend / API
 
-## 🚀 Tecnologias Utilizadas
+Node.js
 
-### Frontend
+Next.js (App Router)
 
-* **Next.js (App Router)**
-* **React**
-* **TypeScript**
-* **Tailwind CSS**
-* **Shadcn/UI**
-* **React Hook Form**
-* **Zod**
-* **Apollo Client**
+GraphQL
 
-### Backend / API
+Prisma ORM
 
-* **GraphQL**
-* **Apollo Server**
-* **Autenticação via token (JWT)**
+PostgreSQL
 
----
+JWT (autenticação)
 
-## 🔐 Funcionalidades Principais
+Infraestrutura
 
-### Autenticação
+Docker
 
-* Login de usuário via GraphQL
-* Token salvo em **cookie**
-* Contexto global de autenticação (`AuthContext`)
-* Botão de logout
+Docker Compose
 
-### Rotas Protegidas
+🏗️ Arquitetura do Projeto
+createProduct/
+├── app/
+│   ├── api/
+│   │   └── graphql/
+│   │       ├── resolvers.ts
+│   │       ├── typeDefs.ts
+│   │       └── context.ts
+│   └── page.tsx
+├── prisma/
+│   └── schema.prisma
+├── generated/
+│   └── prisma/
+│       └── client
+├── .env
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
 
-* A rota `/products` é protegida no **server-side**
-* Usuários não autenticados são redirecionados para `/login`
-* Usuários autenticados não conseguem acessar `/login`
+🔐 Funcionalidades
 
-### Produtos (CRUD)
+✅ Cadastro de usuários
 
-* Criar produto
-* Listar produtos
-* Editar produto
-* Excluir produto
-* Produtos associados ao usuário criador
+✅ Login com JWT
 
-### Formulários
+✅ CRUD de produtos
 
-* React Hook Form
-* Validação com Zod
-* Mensagens de erro amigáveis
+✅ Relacionamento Usuário → Produtos
 
----
+✅ Listagem de usuários e produtos
 
-## 📁 Estrutura de Pastas (Simplificada)
+✅ Banco de dados PostgreSQL
 
-```
-app/
- ├─ login/
- │   └─ page.tsx
- ├─ products/
- │   ├─ layout.tsx   # Proteção de rota
- │   └─ page.tsx
- └─ page.tsx         # Redirecionamento inicial
+✅ Ambiente Dockerizado para desenvolvimento
 
-components/
- ├─ auth/
- ├─ products/
- └─ ui/
+⚙️ Pré-requisitos
 
-context/
- └─ AuthContext.tsx
+Antes de começar, você precisa ter instalado:
 
-hooks/
- └─ useProducts.ts
+Docker
 
-lib/
- ├─ apollo.ts
- └─ graphql.ts
-```
+Docker Compose
 
----
+Git
 
-## ▶️ Como Rodar o Projeto Localmente
+👉 Não é necessário instalar Node.js nem PostgreSQL localmente.
 
-### 1️⃣ Clonar o repositório
-
-```bash
+🐳 Como rodar o projeto com Docker (modo desenvolvimento)
+1️⃣ Clone o repositório
 git clone https://github.com/xelinhabl/createProduct.git
 cd createProduct
-```
 
-### 2️⃣ Instalar as dependências
+2️⃣ Crie o arquivo .env
 
-```bash
-npm install
-# ou
-yarn install
-```
+Na raiz do projeto:
 
-### 3️⃣ Configurar variáveis de ambiente
+DATABASE_URL="postgresql://postgres:postgres@db:5432/myapp?schema=public"
+JWT_SECRET="chaveSecreta"
 
-Crie um arquivo `.env.local` na raiz do projeto:
+3️⃣ Suba os containers
+docker compose up -d
 
-```env
-NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4000/graphql
-```
 
-> Ajuste a URL conforme o backend estiver rodando.
+Verifique se os containers estão rodando:
 
----
+docker compose ps
 
-### 4️⃣ Rodar o projeto
+4️⃣ Execute as migrations do Prisma
 
-```bash
-npm run dev
-# ou
-yarn dev
-```
+⚠️ IMPORTANTE: Esse comando deve ser executado dentro do container.
 
-Acesse no navegador:
+docker compose exec app sh
 
-```
-http://localhost:3000
-```
 
----
+Dentro do container:
 
-## 🔄 Fluxo de Autenticação
+npx prisma generate
+npx prisma migrate dev --name init
 
-1. Usuário acessa a aplicação
-2. É redirecionado para `/login` se não estiver autenticado
-3. Após login:
 
-   * Token é salvo em cookie
-   * Usuário é redirecionado para `/products`
-4. Rotas são protegidas no server-side
-5. Logout remove token e redireciona para login
+Saia do container:
 
----
+exit
 
-## ✅ Pontos Atendidos do Desafio
+5️⃣ Acesse a aplicação
 
-* [x] API GraphQL com CRUD
-* [x] Interface com Next.js + Tailwind + Shadcn
-* [x] Rotas autenticadas
-* [x] React Hook Form + Zod
-* [x] Boas práticas de arquitetura
+API GraphQL:
+👉 http://localhost:3000/api/graphql
 
----
+🧪 Exemplos de Queries GraphQL
+🔹 Criar usuário
+mutation {
+  createUser(
+    name: "João"
+    email: "joao@email.com"
+    password: "123456"
+  ) {
+    id
+    name
+    email
+  }
+}
 
-## 👤 Autor
+🔹 Login
+mutation {
+  login(
+    email: "joao@email.com"
+    password: "123456"
+  ) {
+    token
+    user {
+      id
+      name
+    }
+  }
+}
 
-Desenvolvido por **XelinhaBL**
+🔹 Listar usuários
+query {
+  users {
+    id
+    name
+    email
+  }
+}
 
-🔗 GitHub: [https://github.com/xelinhabl](https://github.com/xelinhabl)
+🔹 Criar produto
+mutation {
+  createProduto(
+    nome: "iPhone"
+    quantidade: 10
+    origem: "Importado"
+    sku: "IP123"
+    descricao: "iPhone 15"
+  ) {
+    id
+    nome
+  }
+}
 
----
+⚠️ Observações Importantes
 
-## 📝 Observações
+O serviço db só é acessível dentro da rede Docker
 
-Este projeto foi estruturado com foco em **clareza**, **organização** e **boas práticas**, sendo ideal para avaliação técnica ou como base para aplicações maiores.
+Sempre execute comandos do Prisma usando:
 
-Se houver qualquer dúvida ou sugestão, fique à vontade para entrar em contato.
+docker compose exec app sh
+
+
+Se ocorrer erro de conexão com o banco:
+
+docker compose down -v
+docker compose up -d
+
+📌 Próximas melhorias sugeridas
+
+🔐 Proteção de resolvers com middleware de autenticação
+
+🧪 Seed automático de dados
+
+🚀 Build de produção com Docker
+
+🧩 Testes automatizados
+
+👨‍💻 Autor
+
+Desenvolvido por Xelinhabl
+📎 GitHub: https://github.com/xelinhabl

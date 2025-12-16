@@ -16,45 +16,91 @@ type LoginFormType = z.infer<typeof LoginSchema>
 export const LoginForm = () => {
   const { login } = useAuth()
 
-  const { register, handleSubmit, formState } = useForm<LoginFormType>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormType>({
     resolver: zodResolver(LoginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   })
 
   const onSubmit = async (data: LoginFormType) => {
     try {
       await login(data.email, data.password)
     } catch (err) {
+      console.error(err)
       alert("Erro ao autenticar")
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-      <Card className="w-full max-w-md p-8 shadow-lg space-y-6">
-        <h1 className="text-2xl font-bold text-center">Login</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 px-4">
+      <Card className="w-full max-w-md rounded-2xl shadow-xl p-8 space-y-8">
+        {/* Título */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Bem-vindo</h1>
+          <p className="text-gray-500 text-sm">
+            Faça login para continuar
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-
+        {/* Formulário */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Email */}
           <div className="space-y-1">
-            <Input placeholder="Email" {...register("email")} />
-            {formState.errors.email && (
-              <p className="text-red-500 text-sm">{formState.errors.email.message}</p>
+            <label className="text-sm font-medium text-gray-700">
+              E-mail
+            </label>
+            <Input
+              type="email"
+              placeholder="seu@email.com"
+              {...register("email")}
+              className={`h-11 rounded-lg ${
+                errors.email
+                  ? "border-red-500 focus:ring-red-500"
+                  : "focus:ring-gray-900"
+              }`}
+            />
+            {errors.email && (
+              <p className="text-xs text-red-500">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
+          {/* Senha */}
           <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">
+              Senha
+            </label>
             <Input
               type="password"
-              placeholder="Senha"
+              placeholder="••••••••"
               {...register("password")}
+              className={`h-11 rounded-lg ${
+                errors.password
+                  ? "border-red-500 focus:ring-red-500"
+                  : "focus:ring-gray-900"
+              }`}
             />
-            {formState.errors.password && (
-              <p className="text-red-500 text-sm">{formState.errors.password.message}</p>
+            {errors.password && (
+              <p className="text-xs text-red-500">
+                {errors.password.message}
+              </p>
             )}
           </div>
 
-          <Button type="submit" className="w-full">
-            Entrar
+          {/* Botão */}
+          <Button
+            type="submit"
+            className="w-full h-11 rounded-lg text-base font-medium"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
         </form>
       </Card>

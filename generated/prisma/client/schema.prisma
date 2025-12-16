@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma/client"
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -9,24 +10,30 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  password  String
-  produtos  Produto[] // relação 1:N
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+
+  // Relação 1:N
+  produtos Produto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Produto {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   nome       String
   quantidade Int
   origem     String
-  sku        String   @unique
+  sku        String  @unique
   descricao  String?
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String? // opcional para produtos existentes
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+
+  // 🔐 Relação com usuário
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
