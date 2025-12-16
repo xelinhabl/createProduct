@@ -3,14 +3,14 @@
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { ZodError } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useProducts, type Produto } from "../../hooks/useProducts"
 import { Button, Input, Card } from "../ui"
 
-/* ------------------ Schema Zod ------------------ */
+/* ------------------ Schema ------------------ */
 const ProdutoSchema = z.object({
   nome: z.string().min(2, "Nome obrigatório"),
-  quantidade: z.coerce.number().min(1, "Quantidade inválida"),
+  quantidade: z.number().min(1, "Quantidade inválida"),
   origem: z.string().min(2, "Origem obrigatória"),
   sku: z.string().min(2, "SKU obrigatório"),
   descricao: z.string().optional(),
@@ -29,10 +29,10 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
   const {
     register,
     handleSubmit,
-    setError,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ProdutoFormInput>({
+    resolver: zodResolver(ProdutoSchema),
     defaultValues: {
       nome: "",
       quantidade: 1,
@@ -42,7 +42,7 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
     },
   })
 
-  /* 🔥 ESSENCIAL: Atualiza o formulário quando editProduto mudar */
+  /* ------------------ Preenche o form se estiver editando ------------------ */
   useEffect(() => {
     if (editProduto) {
       reset({
@@ -52,67 +52,103 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
         sku: editProduto.sku,
         descricao: editProduto.descricao ?? "",
       })
-    } else {
-      reset({
-        nome: "",
-        quantidade: 1,
-        origem: "",
-        sku: "",
-        descricao: "",
-      })
     }
   }, [editProduto, reset])
 
-  /* ------------------ Submit Handler ------------------ */
-  const onSubmit = async (values: ProdutoFormInput) => {
-    try {
-      const validated = ProdutoSchema.parse(values)
-
-      if (editProduto) {
-        await updateProduct(editProduto.id, validated)
-      } else {
-        await createProduct(validated)
-      }
-
-      reset()
-      onFinish?.()
-    } catch (err) {
-      if (err instanceof ZodError) {
-        err.issues.forEach((issue) => {
-          const field = issue.path[0] as keyof ProdutoFormInput
-
-          setError(field, { message: issue.message })
-        })
-      }
+  /* ------------------ Submit ------------------ */
+  const onSubmit = async (data: ProdutoFormInput) => {
+    if (editProduto) {
+      await updateProduct(editProduto.id, data)
+    } else {
+      await createProduct(data)
     }
+
+    reset() // Limpa o formulário após salvar
+    onFinish?.()
   }
 
   return (
-    <Card className="p-6 space-y-3">
-      <h2 className="text-xl font-bold">
-        {editProduto ? "Editar Produto" : "Criar Produto"}
+    <Card className="max-w-3xl mx-auto bg-zinc-900/80 border border-zinc-700 rounded-2xl p-8 shadow-xl space-y-6">
+      {/* Título */}
+      <h2 className="text-2xl font-semibold text-white text-center">
+        {editProduto ? "Editar Produto" : "Novo Produto"}
       </h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      {/* Formulário */}
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid grid-cols-1 md:grid-cols-2 gap-5"
+      >
+        {/* Nome */}
+        <div>
+          <Input
+            placeholder="Nome"
+            {...register("nome")}
+            className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
+          />
+          {errors.nome && (
+            <p className="text-xs text-red-400 mt-1">{errors.nome.message}</p>
+          )}
+        </div>
 
-        <Input placeholder="Nome" {...register("nome")} />
-        {errors.nome && <p className="text-red-500">{errors.nome.message}</p>}
+        {/* Quantidade */}
+        <div>
+          <Input
+            type="number"
+            placeholder="Quantidade"
+            {...register("quantidade", { valueAsNumber: true })}
+            className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
+          />
+          {errors.quantidade && (
+            <p className="text-xs text-red-400 mt-1">
+              {errors.quantidade.message}
+            </p>
+          )}
+        </div>
 
-        <Input type="number" {...register("quantidade", { valueAsNumber: true })} placeholder="Quantidade" />
-        {errors.quantidade && <p className="text-red-500">{errors.quantidade.message}</p>}
+        {/* Origem */}
+        <div>
+          <Input
+            placeholder="Origem"
+            {...register("origem")}
+            className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
+          />
+          {errors.origem && (
+            <p className="text-xs text-red-400 mt-1">{errors.origem.message}</p>
+          )}
+        </div>
 
-        <Input placeholder="Origem" {...register("origem")} />
-        {errors.origem && <p className="text-red-500">{errors.origem.message}</p>}
+        {/* SKU */}
+        <div>
+          <Input
+            placeholder="SKU"
+            {...register("sku")}
+            className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
+          />
+          {errors.sku && (
+            <p className="text-xs text-red-400 mt-1">{errors.sku.message}</p>
+          )}
+        </div>
 
-        <Input placeholder="SKU" {...register("sku")} />
-        {errors.sku && <p className="text-red-500">{errors.sku.message}</p>}
+        {/* Descrição */}
+        <div className="md:col-span-2">
+          <Input
+            placeholder="Descrição (opcional)"
+            {...register("descricao")}
+            className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
+          />
+        </div>
 
-        <Input placeholder="Descrição" {...register("descricao")} />
-        {errors.descricao && <p className="text-red-500">{errors.descricao.message}</p>}
-
-        <Button type="submit">
-          {editProduto ? "Atualizar" : "Salvar"}
-        </Button>
+        {/* Botão de submit */}
+        <div className="md:col-span-2">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold transition-all"
+          >
+            {editProduto ? "Atualizar Produto" : "Salvar Produto"}
+          </Button>
+        </div>
       </form>
     </Card>
   )

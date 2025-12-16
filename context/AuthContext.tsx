@@ -1,4 +1,3 @@
-// context/AuthContext.tsx
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
@@ -52,8 +51,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { token, user } = data.login
 
+    // ✅ Client
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(user))
+
+    // ✅ Server / Middleware
+    document.cookie = `token=${token}; path=/; max-age=86400`
 
     setToken(token)
     setUser(user)
@@ -64,6 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
+
+    // remove cookie
+    document.cookie = "token=; path=/; max-age=0"
 
     setToken(null)
     setUser(null)
@@ -80,6 +86,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) throw new Error("useAuth must be used within AuthProvider")
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider")
+  }
   return context
 }

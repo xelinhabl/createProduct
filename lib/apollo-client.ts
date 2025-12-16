@@ -1,4 +1,3 @@
-// lib/apollo-client.ts
 "use client"
 
 import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client"

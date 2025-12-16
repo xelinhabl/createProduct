@@ -5,10 +5,12 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value
   const path = req.nextUrl.pathname
 
+  // 🔒 Protege /products
   if (path.startsWith("/products") && !token) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
+  // 🔁 Evita acessar login estando logado
   if (path === "/login" && token) {
     return NextResponse.redirect(new URL("/products", req.url))
   }

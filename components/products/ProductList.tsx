@@ -11,25 +11,48 @@ export const ProductList = ({ onEdit }: Props) => {
   const { produtos, deleteProduct } = useProducts()
 
   return (
-    <Card className="p-6 space-y-3">
-      <h2 className="text-lg font-semibold">Produtos</h2>
-      <ul className="space-y-2">
+    <Card className="max-w-4xl mx-auto bg-zinc-900/80 border border-zinc-700 rounded-2xl p-8 shadow-xl space-y-6">
+      <h2 className="text-2xl font-semibold text-white text-center">
+        Produtos Cadastrados
+      </h2>
+
+      <div className="space-y-4">
         {produtos.map((p) => (
-          <li key={p.id} className="flex justify-between items-center">
-            <div>
-              <strong>{p.nome}</strong> — {p.quantidade} unidades
-              <br />
-              <small>{p.sku}</small>
-              <br />
-              <small>Criado por: {p.user?.name ?? "Desconhecido"}</small>
+          <div
+            key={p.id}
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-zinc-800 border border-zinc-700 rounded-xl p-5"
+          >
+            <div className="text-zinc-200 space-y-1">
+              <p className="font-semibold text-lg">{p.nome}</p>
+              <p className="text-sm text-zinc-400">
+                {p.quantidade} unidades • SKU {p.sku}
+              </p>
+              <p className="text-xs text-zinc-500">
+                Criado por {p.user?.name ?? "Desconhecido"}
+              </p>
             </div>
-            <div className="space-x-2">
-              {onEdit && <Button size="sm" onClick={() => onEdit(p.id)}>Editar</Button>}
-              <Button size="sm" variant="destructive" onClick={() => deleteProduct(p.id)}>Excluir</Button>
+
+            <div className="flex gap-2">
+              {onEdit && (
+                <Button
+                  size="sm"
+                  onClick={() => onEdit(p.id)}
+                  className="bg-indigo-600 hover:bg-indigo-500"
+                >
+                  Editar
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteProduct(p.id)}
+              >
+                Excluir
+              </Button>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </Card>
   )
 }
