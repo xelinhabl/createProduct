@@ -63,7 +63,15 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
       await createProduct(data)
     }
 
-    reset() // Limpa o formulário após salvar
+    // LIMPA O FORMULÁRIO E SAI DO MODO EDIÇÃO
+    reset({
+      nome: "",
+      quantidade: 1,
+      origem: "",
+      sku: "",
+      descricao: "",
+    })
+
     onFinish?.()
   }
 
@@ -87,7 +95,9 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
             className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
           />
           {errors.nome && (
-            <p className="text-xs text-red-400 mt-1">{errors.nome.message}</p>
+            <p className="text-xs text-red-400 mt-1">
+              {errors.nome.message}
+            </p>
           )}
         </div>
 
@@ -114,7 +124,9 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
             className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
           />
           {errors.origem && (
-            <p className="text-xs text-red-400 mt-1">{errors.origem.message}</p>
+            <p className="text-xs text-red-400 mt-1">
+              {errors.origem.message}
+            </p>
           )}
         </div>
 
@@ -126,7 +138,9 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
             className="h-11 bg-zinc-800 border-zinc-700 text-white rounded-xl"
           />
           {errors.sku && (
-            <p className="text-xs text-red-400 mt-1">{errors.sku.message}</p>
+            <p className="text-xs text-red-400 mt-1">
+              {errors.sku.message}
+            </p>
           )}
         </div>
 
@@ -139,13 +153,16 @@ export const ProductForm = ({ editProduto, onFinish }: Props) => {
           />
         </div>
 
-        {/* Botão de submit */}
+        {/* Botão */}
         <div className="md:col-span-2">
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold transition-all"
+            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
+            {isSubmitting && (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            )}
             {editProduto ? "Atualizar Produto" : "Salvar Produto"}
           </Button>
         </div>

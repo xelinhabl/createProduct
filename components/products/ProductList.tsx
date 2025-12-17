@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useProducts } from "../../hooks/useProducts"
 import { Button, Card } from "../ui"
 
@@ -9,6 +10,13 @@ interface Props {
 
 export const ProductList = ({ onEdit }: Props) => {
   const { produtos, deleteProduct } = useProducts()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id)
+    await deleteProduct(id)
+    setDeletingId(null)
+  }
 
   return (
     <Card className="max-w-4xl mx-auto bg-zinc-900/80 border border-zinc-700 rounded-2xl p-8 shadow-xl space-y-6">
@@ -42,11 +50,17 @@ export const ProductList = ({ onEdit }: Props) => {
                   Editar
                 </Button>
               )}
+
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={() => deleteProduct(p.id)}
+                disabled={deletingId === p.id}
+                onClick={() => handleDelete(p.id)}
+                className="flex items-center gap-2 disabled:opacity-60"
               >
+                {deletingId === p.id && (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                )}
                 Excluir
               </Button>
             </div>

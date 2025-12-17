@@ -128,8 +128,13 @@ export const LoginForm = () => {
                 text-white font-semibold tracking-wide
                 shadow-lg shadow-indigo-600/30
                 transition-all
+                flex items-center justify-center gap-2
+                disabled:opacity-60
               "
             >
+              {isSubmitting && (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              )}
               {isSubmitting ? "Autenticando..." : "Entrar"}
             </Button>
           </form>
