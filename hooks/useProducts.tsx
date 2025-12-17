@@ -1,6 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react"
 import { apolloClient } from "../lib/apollo-client"
 import { useAuth } from "../context/AuthContext"
 import {
@@ -24,8 +31,23 @@ export type Produto = {
   }
 }
 
-/* ------------------ HOOK ------------------ */
-export const useProducts = () => {
+interface ProductsContextType {
+  produtos: Produto[]
+  loading: boolean
+  error: string | null
+  createProduct: (data: Omit<Produto, "id" | "user">) => Promise<void>
+  updateProduct: (
+    id: string,
+    data: Omit<Produto, "id" | "user">
+  ) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
+  fetchProducts: () => Promise<void>
+}
+
+const ProductsContext = createContext<ProductsContextType | undefined>(undefined)
+
+/* ------------------ PROVIDER ------------------ */
+export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const { token, loading: authLoading } = useAuth()
 
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -53,6 +75,13 @@ export const useProducts = () => {
       setLoading(false)
     }
   }, [token])
+
+  /* ------------------ LOAD INICIAL ------------------ */
+  useEffect(() => {
+    if (!authLoading && token) {
+      fetchProducts()
+    }
+  }, [authLoading, token, fetchProducts])
 
   /* ------------------ CREATE ------------------ */
   const createProduct = async (produto: Omit<Produto, "id" | "user">) => {
@@ -93,20 +122,28 @@ export const useProducts = () => {
     await fetchProducts()
   }
 
-  /* ------------------ LOAD INICIAL ------------------ */
-  useEffect(() => {
-    if (!authLoading && token) {
-      fetchProducts()
-    }
-  }, [authLoading, token, fetchProducts])
+  return (
+    <ProductsContext.Provider
+      value={{
+        produtos,
+        loading,
+        error,
+        fetchProducts,
+        createProduct,
+        updateProduct,
+        deleteProduct,
+      }}
+    >
+      {children}
+    </ProductsContext.Provider>
+  )
+}
 
-  return {
-    produtos,
-    loading,
-    error,
-    fetchProducts,
-    createProduct,
-    updateProduct,
-    deleteProduct,
+/* ------------------ HOOK ------------------ */
+export const useProducts = () => {
+  const context = useContext(ProductsContext)
+  if (!context) {
+    throw new Error("useProducts must be used within ProductsProvider")
   }
+  return context
 }
