@@ -1,6 +1,12 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react"
 import { useRouter } from "next/navigation"
 import { apolloClient } from "../lib/apollo-client"
 import { LOGIN } from "../lib/graphql"
@@ -15,7 +21,7 @@ interface AuthContextType {
   token: string | null
   user: User | null
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   loading: boolean
 }
 
@@ -40,10 +46,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const login = async (email: string, password: string) => {
-    const { data } = await apolloClient.mutate({
+    const { data } = (await apolloClient.mutate({
       mutation: LOGIN,
       variables: { email, password },
-    }) as any
+    })) as any
 
     if (!data?.login?.token) {
       throw new Error("Falha no login")
@@ -51,34 +57,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { token, user } = data.login
 
-    // ✅ Client
+    // Client
     localStorage.setItem("token", token)
     localStorage.setItem("user", JSON.stringify(user))
 
-    // ✅ Server / Middleware
+    // Server (middleware)
     document.cookie = `token=${token}; path=/; max-age=86400`
 
     setToken(token)
     setUser(user)
 
-    router.push("/products")
+    router.replace("/products")
   }
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
 
-    // remove cookie
     document.cookie = "token=; path=/; max-age=0"
 
     setToken(null)
     setUser(null)
 
-    router.push("/login")
+    router.replace("/login")
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{ token, user, login, logout, loading }}
+    >
       {children}
     </AuthContext.Provider>
   )

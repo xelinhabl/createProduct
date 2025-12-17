@@ -3,15 +3,15 @@ import type { NextRequest } from "next/server"
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value
-  const path = req.nextUrl.pathname
+  const { pathname } = req.nextUrl
 
   // 🔒 Protege /products
-  if (path.startsWith("/products") && !token) {
+  if (pathname.startsWith("/products") && !token) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
-  // 🔁 Evita acessar login estando logado
-  if (path === "/login" && token) {
+  // 🔁 Impede acessar /login estando logado
+  if (pathname === "/login" && token) {
     return NextResponse.redirect(new URL("/products", req.url))
   }
 
